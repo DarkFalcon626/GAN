@@ -15,7 +15,7 @@ import pickle
 import random
 import numpy as np
 import torch.nn as nn
-import torch.nn.functional as func
+
 
 
 def Data_normalize(data):
@@ -224,7 +224,8 @@ class Generator(nn.Module):
     Methods
     -------
     forward(x)
-        Runs the vector x through the network.
+        Runs the vector x through the network converting the vector into a 
+        tensor representing an image.
     '''
     
     def __init__(self, data, param):
@@ -286,15 +287,45 @@ class Generator(nn.Module):
             )
     
     def forward(self, x):
+        '''
+        Runs a vector x through the generator network to create an image.
+
+        Parameters
+        ----------
+        x : Torch Tensor
+            The randomized laten space vector.
+
+        Returns
+        -------
+        Torch Tensor
+            The tensor values for the generated image.
+        '''
         
         return self.main(x)
 
         
 class Discriminator(nn.Module):
+    '''
+    A 5 layer convolation with a single fully connected layer producing the
+    confidince in determining if the feed in image is fake or real.
     
+    Attributes
+    ----------
+    main : Torch Sequential
+        The layers and activations functions constructing the network.
+    fc : Torch Sequential
+        The fully connected layer of the network.
+        
+    Methods
+    -------
+    forward(x)
+        Runs the vector x through the network producing a confidence value
+        between 0 and 1 in which the image is real (i.e. 1) or fake (i.e. 0).
+    '''
     def __init__(self, data, param):
         super(Discriminator, self).__init__()
         
+        ## Extract the values for the network from the param file.
         k1 = param['kernal_1']
         p1 = param['padding_1']
         s1 = param['stride_1']
@@ -321,12 +352,14 @@ class Discriminator(nn.Module):
         Conv4 = param['Conv4']
         Conv5 = param['Conv5']
         
+        ## Solve for the size of the last convolation layer.
         width1 = ConvWidth(data.res, p1, k1, s1)
         width2 = ConvWidth(width1, p2, k2, s2)
         width3 = ConvWidth(width2, p3, k3, s3)
         width4 = ConvWidth(width3, p4, k4, s4)
         width5 = ConvWidth(width4, p5, k5, s5)
         
+        ## The main convolation layers.
         self.main = nn.Sequential(
             nn.Conv2d(data.channels, Conv1, k1, s1, p1, bias = False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -348,15 +381,31 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             )
         
+        # The fully connected layer.
         self.fc = nn.Sequential(
             nn.Linear((width5**2)*Conv5, 1),
             nn.Sigmoid()
             )
         
     def forward(self, x):
-        
+        '''
+        Runs a tensor representation of a image through the networks layers 
+        producing a confidence value in if the image is fake or real.
+
+        Parameters
+        ----------
+        x : Torch tensor
+            A tensor representation of an image to determine if its real or 
+            fake.
+
+        Returns
+        -------
+        x : Torch Tensor
+            A value representing the networks confidence in if the image is
+            real (i.e. 1) or fake (i.e. 0).
+        '''
         x = self.main(x)
-        x = x.reshape(x.size(0),-1)
+        x = x.reshape(x.size(0),-1) # Flattens the convolation into a column vector.
         x = self.fc(x)
         
         return x
