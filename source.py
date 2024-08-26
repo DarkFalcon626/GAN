@@ -15,36 +15,13 @@ import pickle
 import random
 import numpy as np
 import torch.nn as nn
+import torchvision.transforms as trans
+from PIL import Image
 
 
-
-def Data_normalize(data):
-    '''
-    Normalizes a dataset to between the values of 0 and 1.
-    
-    Parameters
-    ----------
-    data : listof(Numpy array)
-        A list of data point values
-    
-    return
-    ------
-    normalized_data : listof (numpy array)
-        A normalized data set between values 0 and 1.
-    '''
-    
-    ## Converts the data to a numpy array to speed up calculations.
-    data = np.array(data)
-    max_val = np.max(data) # Determine the max value in the dataset.
-    min_val = np.min(data) # Determine the min value in the dataset.
-    
-    ## Transpose all the values in the set to the domain [0,1].
-    normalized_data = (data - min_val)/(max_val-min_val)
-    
-    ## Convert the array back to the list.
-    normalized_data = list(normalized_data)
-    
-    return normalized_data
+##-----------------------------------------------------------------------------
+## Functions
+##-----------------------------------------------------------------------------
 
 
 def ConvWidth(w, p, k, s):
@@ -93,6 +70,65 @@ def ConvTransWidth(w, p, k, s):
     '''
     
     return (w - 1)*s - 2*p + (k - 1) + 1
+
+
+def Data_normalize(data):
+    '''
+    Normalizes a dataset to between the values of 0 and 1.
+    
+    Parameters
+    ----------
+    data : listof(Numpy array)
+        A list of data point values
+    
+    return
+    ------
+    normalized_data : listof (numpy array)
+        A normalized data set between values 0 and 1.
+    '''
+    
+    ## Converts the data to a numpy array to speed up calculations.
+    data = np.array(data)
+    max_val = np.max(data) # Determine the max value in the dataset.
+    min_val = np.min(data) # Determine the min value in the dataset.
+    
+    ## Transpose all the values in the set to the domain [0,1].
+    normalized_data = (data - min_val)/(max_val-min_val)
+    
+    ## Convert the array back to the list.
+    normalized_data = list(normalized_data)
+    
+    return normalized_data
+
+
+def View(image):
+    '''
+    Consumes a torch tensor representing an image and shows the image the 
+    tensor represents.
+
+    Parameters
+    ----------
+    image : Torch tensor
+        Tensor of an image.
+
+    Effects
+    -------
+    Shows the image of the tensor on screen.
+    
+    Returns
+    -------
+    None.
+
+    '''
+    transform = trans.ToPILImage()
+    
+    img = transform(image)
+    img.show()
+
+
+##-----------------------------------------------------------------------------
+## Classes
+##-----------------------------------------------------------------------------
 
 
 class Data():
@@ -411,21 +447,36 @@ class Discriminator(nn.Module):
         return x
     
     
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+##-----------------------------------------------------------------------------
+## Test Code
+##-----------------------------------------------------------------------------
+
+## The following section of code is use to test the above and is only ran if
+##  this is the main file being ran.
+
+if __name__ == '__main__':
+    
+    ## Determine if a GPU is avalible
+    if torch.cuda.is_available():
+        dev = 'cuda:0'
+    else:
+        dev = 'cpu'
+    
+    device = torch.device(dev)
+    
+    path = os.path.dirname(__file__)
+    
+    data_path = path + '\\Dataset\\64images.pickle'
+    param_path = path + '\\param.json'
+    
+    with open(param_path, 'rb') as paramfile:
+        param = json.load(paramfile)
+    paramfile.close()
+    
+    bird64 = Data(data_path, device)
+    Gen64 = Generator(bird64, param["Generator"])
+    Disc64 = Discriminator(bird64, param["Discriminator"])
+    
+    
+    
+    
