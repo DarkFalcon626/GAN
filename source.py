@@ -215,7 +215,7 @@ class Data():
         '''
         
         ## Determine the size of the batches
-        batch_size = self.n_size//n_batches
+        self.batch_size = self.n_size//n_batches
         
         ## Copy the dataset so the randomizing doesn't effect the original.
         batchable_data = self.dataset.copy()
@@ -234,9 +234,9 @@ class Data():
         batchable_data = torch.tensor(batchable_data)
         
         ## Reshape the tensor to include the batches.
-        batched_data = batchable_data.reshape((n_batches, batch_size, 
+        batched_data = batchable_data.reshape((n_batches, self.batch_size, 
                                                self.res,self.res,self.channels))
-        batched_labels = torch.ones((n_batches, batch_size))
+        batched_labels = torch.ones((self.batch_size), float)
         
         ## Send to the device to store the data.
         batched_data.to(device)
