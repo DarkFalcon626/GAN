@@ -53,5 +53,14 @@
 		"Conv3": 512,
 		"Conv4": 1024,
 		"Conv5": 1
+	},
+
+	"exec":{
+		"learn_rate": 0.001,
+		"beta1": 0.99,
+		"beta2": 0.9999,
+		"num_epochs": 50,
+		"num_batches": 88,
+		"display_interval": 5
 	}
 }
