@@ -80,7 +80,6 @@ def run(param, gen, disc, data, device):
         batch_errorG = 0
         
         for i, batch in enumerate(batches, 0):
-            print("training batch {} out of {}".format(i,n_batches))
             
             ## Train the discriminator
             ## --------------------------------------
@@ -155,10 +154,10 @@ def run(param, gen, disc, data, device):
         img_list.append(test_img)
         
         if epoch % param['display_interval'] == 0 or epoch == 0:
-            print('Epoch[{}/{}] ({:.2f}%'.format(epoch+1, num_epochs,\
+            print('Epoch[{}/{}] ({:.2f}%) '.format(epoch+1, num_epochs,\
                                                  ((epoch+1)/num_epochs)*100)+\
-                  'Generator loss: {:.5}'.format(lossG) + \
-                      'Discriminator loss: {:.5}'.format(lossD))
+                  'Generator loss: {:.5} '.format(lossG) + \
+                      'Discriminator loss: {:.5} '.format(lossD))
             winsound.Beep(1000,100) # Audio que to alert of the update.
         
     print('Final Loss, Generator: {:.7f}'.format(lossG) + \
@@ -179,6 +178,8 @@ if __name__ == "__main__":
     
     device = torch.device(dev)
     
+    ## Setting the default data type to double precision to increase accuracy.
+    ## Create all tensors on the default device.
     torch.set_default_device(device)
     torch.set_default_dtype(torch.float64)
     
@@ -190,7 +191,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Training of a GAN')
     parser.add_argument('--param', default=path+'param.json',type=str,
                         help='File path for the Json file with the hyperparameters')
-    parser.add_argument('--data-path', default=path+'\\Dataset\\64images.pickle',
+    parser.add_argument('--data-path', default=path+'Dataset\\64imagesReduced0.pickle',
                         type=str, help='Location of the training images')
     parser.add_argument('--model-name', default=path+'64BirdGAN.pkl',
                         type=str, help='Name to save the model as.')
@@ -207,6 +208,8 @@ if __name__ == "__main__":
     
     ## Generate the models and data.
     data, gen, disc = prep(param, device)
+    print("Data Tenosrs and models constructed")
+    print("Beginning Training.....")
     
     ## Run the model through training on the data.
     loss_vals = run(param['exec'], gen, disc, data, device)
