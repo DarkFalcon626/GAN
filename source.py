@@ -188,11 +188,11 @@ class Data():
         dataset = np.transpose(dataset,(0,3,1,2))
         
         self.unbatched_dataset = torch.tensor(dataset, 
-                                              dtype=torch.float64).to(device)
+                                              dtype=torch.float32).to(device)
         
         ## Create a tensor for the labels for training.
         self.unbatched_labels = torch.ones(self.unbatched_dataset.shape[0],
-                                           dtype=torch.float64).to(device)
+                                           dtype=torch.float32).to(device)
         
     
     def create_batches(self, n_batches, device=torch.device('cpu'), shuffle=True):
@@ -239,7 +239,7 @@ class Data():
         ## Reshape the tensor to include the batches.
         batched_data = batchable_data.reshape((n_batches, self.batch_size,
                                                self.channels, self.res,self.res))
-        batched_labels = torch.ones(self.batch_size, dtype=torch.float64)
+        batched_labels = torch.ones(self.batch_size, dtype=torch.float32)
         
         ## Send to the device to store the data.
         batched_data.to(device)
