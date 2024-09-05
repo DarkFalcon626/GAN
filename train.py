@@ -139,19 +139,18 @@ def run(param, gen, disc, data, device):
             ## Add the errors to the batches errors.
             batch_errorD += lossD
             batch_errorG += lossG
-        
+            
+            del lossD_real, lossD_fake
+            del lossG
+            del output
+            del fake
+            del noise
+            
         ## Determine the average error of the batches.
         lossD = batch_errorD/n_batches
         lossG = batch_errorG/n_batches
         
         loss_vals.append([lossG,lossD])
-        
-        ## Generate an image to visually test how the generator is preforming.
-        test_img_noise = torch.randn(1,gen.n_lat,1,1, dtype=torch.float64,
-                                     device=device)
-        test_img = gen.forward(test_img_noise)
-        
-        img_list.append(test_img)
         
         if epoch % param['display_interval'] == 0 or epoch == 0:
             print('Epoch[{}/{}] ({:.2f}%) '.format(epoch+1, num_epochs,\
@@ -160,8 +159,10 @@ def run(param, gen, disc, data, device):
                       'Discriminator loss: {:.5} '.format(lossD))
             winsound.Beep(1000,100) # Audio que to alert of the update.
         
-    print('Final Loss, Generator: {:.7f}'.format(lossG) + \
-          'Discriminator: {:.7f}'.format(lossD))
+        del lossD, lossG
+        
+    print('Final Loss, Generator: {:.7f}'.format(loss_vals[0][-1]) + \
+          'Discriminator: {:.7f}'.format(loss_vals[1][-1]))
     
     return loss_vals
 
@@ -176,7 +177,7 @@ if __name__ == "__main__":
     else:
         dev = "cpu"
     
-    device = torch.device(dev)
+    device = torch.device('cpu')
     
     ## Setting the default data type to double precision to increase accuracy.
     ## Create all tensors on the default device.
