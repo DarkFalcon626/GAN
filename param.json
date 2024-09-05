@@ -56,11 +56,11 @@
 	},
 
 	"exec":{
-		"learn_rate": 0.001,
-		"beta1": 0.99,
+		"learn_rate": 0.01,
+		"beta1": 0.5,
 		"beta2": 0.9999,
 		"num_epochs": 50,
-		"num_batches": 10,
-		"display_interval": 5
+		"num_batches": 25,
+		"display_interval": 1
 	}
 }

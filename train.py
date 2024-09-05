@@ -66,15 +66,17 @@ def run(param, gen, disc, data, device):
                             betas=(param['beta1'],param['beta2']))
     
     loss_vals = []
-    img_list = []
+#    img_list = []
     
     num_epochs = int(param['num_epochs'])
     for epoch in range(num_epochs):
         
         n_batches = param['num_batches']
         batches, real_labels = data.create_batches(n_batches, device, args.shuffle)
+        batches = batches.float()
+        real_labels.float()
 
-        fake_labels = torch.zeros(data.batch_size, dtype=torch.float64).to(device)
+        fake_labels = torch.zeros(data.batch_size, dtype=torch.float32).to(device)
         
         batch_errorD = 0
         batch_errorG = 0
@@ -83,7 +85,7 @@ def run(param, gen, disc, data, device):
             
             ## Train the discriminator
             ## --------------------------------------
-            disc.zero_grad()
+            disc.zero_grad(set_to_none=True)
             
             ## Train with all-real batch
             output = disc.forward(batch).view(-1)
@@ -98,7 +100,7 @@ def run(param, gen, disc, data, device):
             
             ## Create batchs of the latent vectors
             noise = torch.randn(data.batch_size, gen.n_lat, 1, 1,
-                                dtype=torch.float64, device=device)
+                                dtype=torch.float32, device=device)
             
             ## Generate fake images
             fake = gen.forward(noise)
@@ -121,7 +123,7 @@ def run(param, gen, disc, data, device):
             
             ## Train the generator
             ## -------------------------------------
-            gen.zero_grad()
+            gen.zero_grad(set_to_none=True)
             
             ## Feed the fake images through the discriminator that was just
             ## updated.
@@ -131,17 +133,17 @@ def run(param, gen, disc, data, device):
             lossG = loss(output, real_labels)
             
             ## Calculate the gradients for G
-            lossG.backward(retain_graph=True)
+            lossG.backward()
             
             ## Update G.
             optimizerG.step()
             
             ## Add the errors to the batches errors.
-            batch_errorD += lossD
-            batch_errorG += lossG
+            batch_errorD += lossD.item()
+            batch_errorG += lossG.item()
             
             del lossD_real, lossD_fake
-            del lossG
+            del lossG, lossD
             del output
             del fake
             del noise
@@ -152,7 +154,7 @@ def run(param, gen, disc, data, device):
         
         loss_vals.append([lossG,lossD])
         
-        if epoch % param['display_interval'] == 0 or epoch == 0:
+        if (epoch+1) % param['display_interval'] == 0 or epoch == 0:
             print('Epoch[{}/{}] ({:.2f}%) '.format(epoch+1, num_epochs,\
                                                  ((epoch+1)/num_epochs)*100)+\
                   'Generator loss: {:.5} '.format(lossG) + \
@@ -177,12 +179,12 @@ if __name__ == "__main__":
     else:
         dev = "cpu"
     
-    device = torch.device('cpu')
+    device = torch.device(dev)
     
     ## Setting the default data type to double precision to increase accuracy.
     ## Create all tensors on the default device.
     torch.set_default_device(device)
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     
     ## Determine the root path for the files.
     path = os.path.dirname(__file__) + '\\'
@@ -192,7 +194,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Training of a GAN')
     parser.add_argument('--param', default=path+'param.json',type=str,
                         help='File path for the Json file with the hyperparameters')
-    parser.add_argument('--data-path', default=path+'Dataset\\64imagesReduced0.pickle',
+    parser.add_argument('--data-path', default=path+'Dataset\\64images.pickle',
                         type=str, help='Location of the training images')
     parser.add_argument('--model-name', default=path+'64BirdGAN.pkl',
                         type=str, help='Name to save the model as.')
