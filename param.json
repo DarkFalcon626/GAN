@@ -52,14 +52,14 @@
 		"Conv2": 256,
 		"Conv3": 512,
 		"Conv4": 1024,
-		"Conv5": 1
+		"Conv5": 2048
 	},
 
 	"exec":{
-		"learn_rate": 0.01,
+		"learn_rate": 0.001,
 		"beta1": 0.5,
-		"beta2": 0.9999,
-		"num_epochs": 50,
+		"beta2": 0.9,
+		"num_epochs": 500,
 		"num_batches": 25,
 		"display_interval": 1
 	}

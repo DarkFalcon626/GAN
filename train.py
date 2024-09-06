@@ -18,6 +18,8 @@ import time
 import source as src
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+import pylab as plt
 
 
 ##-----------------------------------------------------------------------------
@@ -83,70 +85,62 @@ def run(param, gen, disc, data, device):
         
         for i, batch in enumerate(batches, 0):
             
-            ## Train the discriminator
-            ## --------------------------------------
-            disc.zero_grad(set_to_none=True)
+            ## Train the Generator
+            ## -------------------
             
-            ## Train with all-real batch
-            output = disc.forward(batch).view(-1)
+            optimizerD.zero_grad()
             
-            ## Calculate loss on all-real batch
-            lossD_real = loss(output, real_labels)
+            ## Create the latent vector for the generator input.
+            z = torch.randn(data.batch_size, gen.n_lat, 1, 1, dtype=torch.float,
+                            device=device)
             
-            ## Calculate the gradient on a backward pass
-            lossD_real.backward(retain_graph=True)
+            ## Generate the fake images from the latent vector.
+            gen_imgs = gen.forward(z)
             
-            ## Train with all-fake batch
+            ## Determine the discriminators guesses at the fake images.
+            output = disc.forward(gen_imgs).view(-1)
             
-            ## Create batchs of the latent vectors
-            noise = torch.randn(data.batch_size, gen.n_lat, 1, 1,
-                                dtype=torch.float32, device=device)
+            ## Determine how good those guess's where.
+            g_loss = loss(output, real_labels)
             
-            ## Generate fake images
-            fake = gen.forward(noise)
-            
-            ## Forward pass the fake images through the discriminator
-            output = disc.forward(fake).view(-1)
-            
-            ## Calculate the loss on all-fake batch
-            lossD_fake = loss(output, fake_labels)
-            
-            ## Calculate the gradient on this batch, accumulated with the above
-            lossD_fake.backward(retain_graph=True)
-            
-            ## Calculate the error of the discriminator from both the real and fake.
-            lossD = lossD_real + lossD_fake
-            
-            ## Update the discriminator
-            optimizerD.step()
-            
-            
-            ## Train the generator
-            ## -------------------------------------
-            gen.zero_grad(set_to_none=True)
-            
-            ## Feed the fake images through the discriminator that was just
-            ## updated.
-            output = disc.forward(fake).view(-1)
-            
-            ## Calculate loss, fake labels are real for generator cost.
-            lossG = loss(output, real_labels)
-            
-            ## Calculate the gradients for G
-            lossG.backward()
-            
-            ## Update G.
+            ## update the generator model.
+            g_loss.backward()
             optimizerG.step()
             
-            ## Add the errors to the batches errors.
-            batch_errorD += lossD.item()
-            batch_errorG += lossG.item()
+            ## Train the Discriminator
+            ## -----------------------
             
-            del lossD_real, lossD_fake
-            del lossG, lossD
+            optimizerD.zero_grad()
+            
+            ## Determine the discrimintors guesses at the real images.
+            output = disc.forward(batch).view(-1)
+            
+            ## Determine how good those guess's are.
+            real_loss = loss(output, real_labels)
+            
+            ## Determine the guess's at the fake images.
+            output = disc.forward(gen_imgs.detach()).view(-1)
+            
+            ## Determine how good those guess's are.
+            fake_loss = loss(output, fake_labels)
+            
+            ## Taking the average of the real and fake loss values.
+            d_loss = (real_loss + fake_loss)/2 
+            
+            ## Update the discriminator model.
+            d_loss.backward()
+            optimizerD.step()
+            
+            ## Add the error to the total batch errors.
+            batch_errorD += d_loss.item()
+            batch_errorG += g_loss.item()
+            
+            ## Delete the graphs and data from memory to save memory space.
+            del z
+            del gen_imgs
             del output
-            del fake
-            del noise
+            del g_loss, d_loss
+            del real_loss, fake_loss
             
         ## Determine the average error of the batches.
         lossD = batch_errorD/n_batches
@@ -166,7 +160,43 @@ def run(param, gen, disc, data, device):
     print('Final Loss, Generator: {:.7f}'.format(loss_vals[0][-1]) + \
           'Discriminator: {:.7f}'.format(loss_vals[1][-1]))
     
+    ## Convert the loss values to an numpy array and transpose the array.
+    loss_vals = np.array(loss_vals)
+    loss_vals = np.transpose(loss_vals,(1,0))
+    
     return loss_vals
+
+
+def save_value(save):
+    '''
+    Determines if the input is a excepted value to a yes or no question, if not
+    get a new input.
+
+    Parameters
+    ----------
+    save : STR
+        Input string to a yes or no question.
+
+    Returns
+    -------
+    save : Bool
+        Awnser to the yes or no question.
+    '''
+    
+    ## Reduce any uppercase to lowercase to maintain the meaning of the word.
+    save = save.lower()
+    
+    ## Determine if the awnser is true or false.
+    if save in ['true', '1', 'yes']:
+        save = True
+    elif save in ['false', '0', 'no']:
+        save = False
+    else: # If the awnser is not an excepted value ask the question again.
+        save = input('Value entered is not a proper response. Please enter \
+                     either true, 1, yes or false, 0, no. ->')
+        save = save_value(save) # Check the new awnser.
+    
+    return save
 
 
 if __name__ == "__main__":
@@ -202,6 +232,8 @@ if __name__ == "__main__":
                         help='Boolean value to use batching.')
     parser.add_argument('--shuffle', default='True',type=bool,
                         help='Boolean value to shuffle the data.')
+    parser.add_argument('--fig_name', default=path+"trainingData.png",
+                        type=str, help='Name of the training data image')
     args = parser.parse_args()
     
     ## Open the hyperparameter file.
@@ -216,6 +248,53 @@ if __name__ == "__main__":
     
     ## Run the model through training on the data.
     loss_vals = run(param['exec'], gen, disc, data, device)
+    
+    train_time = time.time() - start_time # Determine the time took to train.
+    
+    if (train_time//3600) > 0:
+        hours = train_time//3600
+        mins = (train_time - hours*3600)//60 
+        secs = train_time - hours*3600 - mins*60
+        
+        print('The model trained in {} hours, {} mins and {:.0f} second'.format(hours, mins, secs))
+    elif (train_time//60) > 0:
+        print('The model trained in {} mins and {:.0f} seconds'.format(train_time//60,
+                                                                       train_time-(train_time//60)*60))
+    else:
+        print('The model trained in {:.0f} seconds'.format(train_time))
+    
+    x = np.arange(1,len(loss_vals[0])+1) # Axis for the number of epochs.
+    
+    plt.plot(x, loss_vals[0], label="Generator Loss")
+    plt.plot(x, loss_vals[1], label="Discriminator Loss")
+    plt.title("Loss per Epoch.")
+    plt.grid()
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.show()
+    
+    ## Asks the user if the model should be saved or not.
+    save = input('Do you want to save the model and training data. -> ')
+    save = save_value(save)
+    
+    ## If save is true save the model as a pickle file.
+    if save:
+        generator_name = args.model[:-4] + "_generator" + args.model[-4:]
+        discriminator_name = args.model[:-4] + "_discriminator" + args.model[-4:]
+        
+        with open(generator_name, 'wb') as f:
+            pickle.dump(gen, f) # Save the generator.
+        f.close()
+        
+        with open(discriminator_name, 'wb') as f:
+            pickle.dump(disc, f)
+        f.close()
+        
+        plt.savefig(args.fig_name, format='png')
+        
+        print("The generator and discriminator are saved as {} and {}".format(
+            args.generator_name, discriminator_name))
     
     
     
