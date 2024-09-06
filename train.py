@@ -8,7 +8,6 @@ Created on Mon Aug 26 00:48:06
 @author: Andrew Francey
 """
 
-
 import os
 import torch
 import json, argparse
@@ -57,6 +56,29 @@ def prep(param, device):
 
 
 def run(param, gen, disc, data, device):
+    '''
+    Consumes a generator and discriminator model along with a data object and
+    torch device to train the models on.
+
+    Parameters
+    ----------
+    param : JSON
+        Parameters for the training.
+    gen : Net object
+        The generator network to generate images.
+    disc : Net object
+        The discriminator for deciding if an image is real or fake.
+    data : Data object
+        The processed data for training of the GAN.
+    device : Torch device
+        Device to store the models and data on.
+
+    Returns
+    -------
+    loss_vals : Array
+        The numpy array containing the values for loss in each epoch.
+
+    '''
     
     ## Using the bineary cross entropy loss function to determine the loss values
     loss = nn.BCELoss()
