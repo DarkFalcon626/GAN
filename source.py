@@ -186,10 +186,13 @@ class Data():
         
         ## Transpose the data to match the input of the pytorch convolution layers.
         dataset = np.transpose(dataset,(0,3,1,2))
-        self.unbatched_dataset = torch.tensor(dataset).to(device)
+        
+        self.unbatched_dataset = torch.tensor(dataset, 
+                                              dtype=torch.float32).to(device)
         
         ## Create a tensor for the labels for training.
-        self.unbatched_labels = torch.ones(self.unbatched_dataset.shape[0]).to(device)
+        self.unbatched_labels = torch.ones(self.unbatched_dataset.shape[0],
+                                           dtype=torch.float32).to(device)
         
     
     def create_batches(self, n_batches, device=torch.device('cpu'), shuffle=True):
@@ -215,7 +218,7 @@ class Data():
         '''
         
         ## Determine the size of the batches
-        batch_size = self.n_size//n_batches
+        self.batch_size = self.n_size//n_batches
         
         ## Copy the dataset so the randomizing doesn't effect the original.
         batchable_data = self.dataset.copy()
@@ -234,9 +237,9 @@ class Data():
         batchable_data = torch.tensor(batchable_data)
         
         ## Reshape the tensor to include the batches.
-        batched_data = batchable_data.reshape((n_batches, batch_size, 
-                                               self.res,self.res,self.channels))
-        batched_labels = torch.ones((n_batches, batch_size))
+        batched_data = batchable_data.reshape((n_batches, self.batch_size,
+                                               self.channels, self.res,self.res))
+        batched_labels = torch.ones(self.batch_size, dtype=torch.float32)
         
         ## Send to the device to store the data.
         batched_data.to(device)
