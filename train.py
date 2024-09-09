@@ -157,8 +157,8 @@ def run(param, gen, disc, data, device):
         
         del lossD, lossG
         
-    print('Final Loss, Generator: {:.7f}'.format(loss_vals[0][-1]) + \
-          'Discriminator: {:.7f}'.format(loss_vals[1][-1]))
+    print('Final Loss, Generator: {:.7f}'.format(loss_vals[-1][0]) + \
+          'Discriminator: {:.7f}'.format(loss_vals[-1][1]))
     
     ## Convert the loss values to an numpy array and transpose the array.
     loss_vals = np.array(loss_vals)
@@ -280,8 +280,8 @@ if __name__ == "__main__":
     
     ## If save is true save the model as a pickle file.
     if save:
-        generator_name = args.model[:-4] + "_generator" + args.model[-4:]
-        discriminator_name = args.model[:-4] + "_discriminator" + args.model[-4:]
+        generator_name = args.model_name[:-4] + "_generator" + args.model_name[-4:]
+        discriminator_name = args.model_name[:-4] + "_discriminator" + args.model_name[-4:]
         
         with open(generator_name, 'wb') as f:
             pickle.dump(gen, f) # Save the generator.
@@ -294,7 +294,7 @@ if __name__ == "__main__":
         plt.savefig(args.fig_name, format='png')
         
         print("The generator and discriminator are saved as {} and {}".format(
-            args.generator_name, discriminator_name))
+            generator_name, discriminator_name))
     
     
     
