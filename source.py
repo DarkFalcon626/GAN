@@ -16,7 +16,7 @@ import random
 import numpy as np
 import torch.nn as nn
 import torchvision.transforms as trans
-from PIL import Image
+
 
 
 ##-----------------------------------------------------------------------------
