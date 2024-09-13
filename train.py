@@ -50,8 +50,12 @@ def prep(param, device):
     '''
     
     data = src.Data(args.data_path, device)
+    
     gen = src.Generator(data, param['Generator']).to(device)
     disc = src.Discriminator(data, param['Discriminator']).to(device)
+    
+    gen.apply(src.weights_init)
+    disc.apply(src.weights_init)
     
     return data, gen, disc
 
@@ -67,102 +71,57 @@ def run(param, gen, disc, data, device):
     optimizerG = optim.Adam(gen.parameters(), lr=param['learn_rate'],
                             betas=(param['beta1'],param['beta2']))
     
+    ## Create list to store loss at each epoch.
     loss_vals = []
-#    img_list = []
     
-    num_epochs = int(param['num_epochs'])
-    for epoch in range(num_epochs):
+    ## Get the number of epochs and batchs from the json file.
+    n_epochs = param['num_epochs']
+    n_batchs = param['num_batches']
+    
+    ## Run through the epochs.
+    for epoch in range(n_epochs):
+        loss_g = 0  # Initialize the losses for the batchs.
+        loss_d = 0 
         
-        n_batches = param['num_batches']
-        batches, real_labels = data.create_batches(n_batches, device, args.shuffle)
-        batches = batches.float()
-        real_labels.float()
+        ## Create the randomized batchs
+        batchs = data.create_batches(n_batchs, device)
+        
+        ## Create the latent vector for generating images.
+        noise = torch.randn(data.batch_size, gen.n_lat, 1, 1).to(device)
+        
+        for i, batch in enumerate(batchs):
+            
+            ## Generate the fake images.
+            data_fake = gen.forward(noise)
+            data_real = batch
+            
+            ## Train the discriminator.
+            loss_d += disc.train(data_real, data_fake, loss, optimizerD, device)
+            
+            ## Generate the fake images again.
+            data_fake = gen.forward(noise).detach()
+            
+            ## Train the generator.
+            loss_g += gen.train(disc, data_fake, loss, optimizerG, device)
 
-        fake_labels = torch.zeros(data.batch_size, dtype=torch.float32).to(device)
+        ## Average out the losses from all the batchs.
+        disc_loss = loss_d/n_batchs
+        gen_loss = loss_g/n_batchs
         
-        batch_errorD = 0
-        batch_errorG = 0
+        loss_vals.append([disc_loss, gen_loss])
         
-        for i, batch in enumerate(batches, 0):
+        if epoch == 0 or (epoch+1)%param['display_epochs'] == 0:
+            print('Epoch [{}/{}] ({:.1f})'.format(epoch+1, n_epochs, ((epoch+1)/n_epochs)*100) +\
+                  '\tGen Loss: {:.5f}'.format(gen_loss) +\
+                  '\tDisc Loss: {:.5}'.format(disc_loss))
             
-            ## Train the Generator
-            ## -------------------
-            
-            optimizerD.zero_grad()
-            
-            ## Create the latent vector for the generator input.
-            z = torch.randn(data.batch_size, gen.n_lat, 1, 1, dtype=torch.float,
-                            device=device)
-            
-            ## Generate the fake images from the latent vector.
-            gen_imgs = gen.forward(z)
-            
-            ## Determine the discriminators guesses at the fake images.
-            output = disc.forward(gen_imgs).view(-1)
-            
-            ## Determine how good those guess's where.
-            g_loss = loss(output, real_labels)
-            
-            ## update the generator model.
-            g_loss.backward()
-            optimizerG.step()
-            
-            ## Train the Discriminator
-            ## -----------------------
-            
-            optimizerD.zero_grad()
-            
-            ## Determine the discrimintors guesses at the real images.
-            output = disc.forward(batch).view(-1)
-            
-            ## Determine how good those guess's are.
-            real_loss = loss(output, real_labels)
-            
-            ## Determine the guess's at the fake images.
-            output = disc.forward(gen_imgs.detach()).view(-1)
-            
-            ## Determine how good those guess's are.
-            fake_loss = loss(output, fake_labels)
-            
-            ## Taking the average of the real and fake loss values.
-            d_loss = (real_loss + fake_loss)/2 
-            
-            ## Update the discriminator model.
-            d_loss.backward()
-            optimizerD.step()
-            
-            ## Add the error to the total batch errors.
-            batch_errorD += d_loss.item()
-            batch_errorG += g_loss.item()
-            
-            ## Delete the graphs and data from memory to save memory space.
-            del z
-            del gen_imgs
-            del output
-            del g_loss, d_loss
-            del real_loss, fake_loss
-            
-        ## Determine the average error of the batches.
-        lossD = batch_errorD/n_batches
-        lossG = batch_errorG/n_batches
-        
-        loss_vals.append([lossG,lossD])
-        
-        if (epoch+1) % param['display_interval'] == 0 or epoch == 0:
-            print('Epoch[{}/{}] ({:.2f}%) '.format(epoch+1, num_epochs,\
-                                                 ((epoch+1)/num_epochs)*100)+\
-                  'Generator loss: {:.5} '.format(lossG) + \
-                      'Discriminator loss: {:.5} '.format(lossD))
-            winsound.Beep(1000,100) # Audio que to alert of the update.
-        
-        del lossD, lossG
-        
-    print('Final Loss, Generator: {:.7f}'.format(loss_vals[0][-1]) + \
-          'Discriminator: {:.7f}'.format(loss_vals[1][-1]))
+            torch.save_image(data_fake, args.image_save, normalize=True)
     
-    ## Convert the loss values to an numpy array and transpose the array.
+    print('Final Gen loss: {:.7f}'.format(gen_loss))
+    print('Fianl Disc Loss: {:.7f}'.format(disc_loss))
+    
     loss_vals = np.array(loss_vals)
-    loss_vals = np.transpose(loss_vals,(1,0))
+    loss_vals = np.transpose(loss_vals, (1,0))
     
     return loss_vals
 
@@ -199,6 +158,10 @@ def save_value(save):
     return save
 
 
+##-----------------------------------------------------------------------------
+## Main code
+##-----------------------------------------------------------------------------
+
 if __name__ == "__main__":
     
     start_time = time.time() # Get the start time.
@@ -232,8 +195,9 @@ if __name__ == "__main__":
                         help='Boolean value to use batching.')
     parser.add_argument('--shuffle', default='True',type=bool,
                         help='Boolean value to shuffle the data.')
-    parser.add_argument('--fig_name', default=path+"trainingData.png",
+    parser.add_argument('--fig-name', default=path+"trainingData.png",
                         type=str, help='Name of the training data image')
+    parser.add_argument('--image-save', default=path+"Images")
     args = parser.parse_args()
     
     ## Open the hyperparameter file.

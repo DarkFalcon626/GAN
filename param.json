@@ -1,5 +1,7 @@
 {
 	"Generator":{
+		"n_lat": 100,
+
 		"kernal_1": 4,
 		"padding_1": 0,
 		"stride_1": 1,
@@ -44,15 +46,10 @@
 		"padding_4": 1,
 		"stride_4": 2,
 		
-		"kernal_5": 4,
-		"padding_5": 0,
-		"stride_5": 1,
-		
-		"Conv1": 128,
-		"Conv2": 256,
-		"Conv3": 512,
-		"Conv4": 1024,
-		"Conv5": 2048
+		"Conv1": 64,
+		"Conv2": 128,
+		"Conv3": 256,
+		"Conv4": 512
 	},
 
 	"exec":{
